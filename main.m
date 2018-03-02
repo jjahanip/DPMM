@@ -92,6 +92,7 @@ sigma = W(:,:, UZ);
 
 dist = zeros(num_cls, num_cls);
 for i = 1: num_cls
+    num_samples(i,1) = sum(classes == i);   % calculate the number of samples in each class
     for j = i+1:num_cls
         dist_1 = KLDiv_multinorm(mu(i,:), mu(j,:), sigma(:,:,i), sigma(:,:,j));
         dist_2 = KLDiv_multinorm(mu(j,:), mu(i,:), sigma(:,:,j), sigma(:,:,i));
@@ -99,12 +100,10 @@ for i = 1: num_cls
         dist(j,i) = dist_1 + dist_2;
     end
 end
-figure,
-imagesc(dist)
-set(gca, 'Xtick', 1:num_cls);
-set(gca, 'Ytick', 1:num_cls);
-colormap('jet'), colorbar;
-title('differences between clusters')
+
+% plot heatmap and number of samples
+plot_heatmap(dist, num_samples)
+
 %% visualize distribution of each feature for different clusters:
 % for i = 1:max(classes)
 %     clusters{i} = new_feat(classes == i, :);
