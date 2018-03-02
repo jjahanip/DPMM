@@ -3,10 +3,11 @@ setPath();
 
 
 %% load data
-load LiVPA_S100_multi_3.mat               ; new_db{1} = db{1};       
-%     load LiVPA_APC_multi_3.mat          ; new_db{2} = db{1};
-%     load LiVPA_GFAP_multi_3.mat         ; new_db{1} = db{3};
-%     load LiVPA_GLAST_multi_3.mat        ; new_db{2} = db{3};
+load LiVPA_S100_multi_3.mat               ; new_db{1} = db{1};
+% load LiVPA_APC_multi_3.mat                ; new_db{2} = db{1};
+% load LiVPA_GFAP_multi_3.mat               ; new_db{1} = db{3};
+% load LiVPA_GLAST_multi_3.mat              ; new_db{2} = db{3};
+% load LiVPA_NeuN_multi_3.mat                 ; new_db{1} = db{1};
 biomarkers = cellfun(@(S) S.biomarker, db, 'UniformOutput', false);
 
 %% create dataset
@@ -15,7 +16,7 @@ dataset = create_dataset( new_db, type );
 
 dataset.features = double(dataset.features);
 dataset.features = dataset.features./max(dataset.features(:));              % normalize the deep features to [0,1]
-%% plot original features 
+%% plot original features
 % figure,
 % for i=1:681
 %     subplot(27,27,i)
@@ -30,10 +31,10 @@ num_feat = 100;
 [U, S] = pca(dataset.features);
 dataset.red_feat = projectData(dataset.features, U, num_feat);
 % normalize [0-1]
-new_feat = bsxfun(@rdivide, ... 
-                  bsxfun(@minus, dataset.red_feat, min(dataset.red_feat)),...
-                  max(dataset.red_feat) - min(dataset.red_feat)...
-                  ); 
+new_feat = bsxfun(@rdivide, ...
+    bsxfun(@minus, dataset.red_feat, min(dataset.red_feat)),...
+    max(dataset.red_feat) - min(dataset.red_feat)...
+    );
 %% plot normalized features after PCA
 % figure,
 % num_plots = ceil(sqrt(num_feat));
@@ -45,17 +46,33 @@ new_feat = bsxfun(@rdivide, ...
 % suptitle(title_text)
 %% DPMM:
 N = size(new_feat, 1);
-T = 50;
+T = 10;
 Phi = 1/T*ones(N,T);
 alpha = rand*10;
 % Run EM!
+removed_samples = [];
 for i = 1:100
     [gamma,mu_0,lambda,W,nu] = Mstep(new_feat,Phi,alpha);
     [Phi,alpha] = Estep(new_feat,gamma,mu_0,lambda,W,nu);
     t = any(isnan(Phi),2);    % find the samples with NaN
     Phi = Phi(~t, :);         % remove element from phi
     new_feat = new_feat(~t, :); % remove element from the samples
+    removed_samples = [removed_samples; dataset.centers(t, :)];
     dataset.centers = dataset.centers(~t, :);
+    dataset.labels =  dataset.labels(~t, :);
+    % check how many + samples in each cluster
+    [~, Z_hat] = max(Phi,[],2);
+    UZ = sort(unique(Z_hat));
+    Z = zeros(1,N);
+    fprintf('round %d\n', i)
+    for j = 1:length(UZ)
+        Z(Z_hat==UZ(j)) = j;
+        acc = sum(ismember(find(Z == j), find(dataset.labels))) / sum(dataset.labels);
+        len = length(find(Z == j));
+        fprintf('class %d:\t%d cells\t%.2f pos\n', j, len, acc)
+    end
+    fprintf('----------------------------------------\n')
+    
 end
 
 N = size(new_feat, 1);      % update labels with removes samples
@@ -68,11 +85,30 @@ end
 classes = Z';
 
 num_cls = max(classes);
+
+%% calculate KL-Div
+mu = mu_0(UZ, :);
+sigma = W(:,:, UZ);
+
+dist = zeros(num_cls, num_cls);
+for i = 1: num_cls
+    for j = i+1:num_cls
+        dist_1 = KLDiv_multinorm(mu(i,:), mu(j,:), sigma(:,:,i), sigma(:,:,j));
+        dist_2 = KLDiv_multinorm(mu(j,:), mu(i,:), sigma(:,:,j), sigma(:,:,i));
+        dist(i,j) = dist_1 + dist_2;
+        dist(j,i) = dist_1 + dist_2;
+    end
+end
+imagesc(dist)
+set(gca, 'Xtick', 1:num_cls);
+set(gca, 'Ytick', 1:num_cls);
+colormap('jet'), colorbar;
+title('differences between clusters')
 %% visualize distribution of each feature for different clusters:
 % for i = 1:max(classes)
 %     clusters{i} = new_feat(classes == i, :);
 % end
-% 
+%
 % figure,
 % for i=1:num_feat
 %     for j=1:num_cls
@@ -91,16 +127,16 @@ for i = 1:num_feat
 end
 
 %% test calculated pdf (histogram, fitted pdf with hist and fitted pdf with kernel)
-selected_feat = 2;
-figure, hold on;
-% hist(myFit{selected_feat}{1}.InputData.data, 1000);
-histfit(myFit{selected_feat}{1}.InputData.data, 1000)
-plot(index, pdf(myFit{selected_feat}{1}, index),'g', 'LineWidth',2);
-legend({'histogram', 'fitted pdf based on histogram', 'fitted pdf using pdf function'})
+% selected_feat = 2;
+% figure, hold on;
+% % hist(myFit{selected_feat}{1}.InputData.data, 1000);
+% histfit(myFit{selected_feat}{1}.InputData.data, 1000)
+% plot(index, pdf(myFit{selected_feat}{1}, index),'g', 'LineWidth',2);
+% legend({'histogram', 'fitted pdf based on histogram', 'fitted pdf using pdf function'})
 
 %% visualize distribution of each cluster for different features:
 % selected_cluster = 12;
-% figure, hold on; count = 0; 
+% figure, hold on; count = 0;
 % for i=1:20:num_feat
 %     visFit = fitdist(new_feat(classes == selected_cluster,i), 'kernel');
 %     plot(index, pdf(visFit, index))
@@ -118,22 +154,21 @@ legend({'histogram', 'fitted pdf based on histogram', 'fitted pdf using pdf func
 % end
 % suptitle(sprintf('PDFs of %d clusters of the each feature',num_cls))
 
-%% calculate distance between clusters
+%% calculate joint pdf
 for i = 1:13
-single_feat_pdf = cellfun(@(x) x{i}, myPdf, 'un', 0);
-joint_pdf{i} = prod(cat(1, single_feat_pdf{:}), 1);
+    single_feat_pdf = cellfun(@(x) x{i}, myPdf, 'un', 0);
+    joint_pdf{i} = prod(cat(1, single_feat_pdf{:}), 1);
 end
 
-dist = KLDiv(pdf(myFit_1, index), pdf(myFit_2, index));
 %% visualization
 % read and show the image
 image =  imadjust(imread('ARBc_#4_Li+VPA_37C_4110_C6_IlluminationCorrected_stitched.tif'));
 color =  [1 1 0];
 color_image = cat(3, ...
-                       color(1) * ones(size(image)),...
-                       color(2) * ones(size(image)),...
-                       color(3) * ones(size(image)));
-imshow(zeros(size(image))); hold on;                   
+    color(1) * ones(size(image)),...
+    color(2) * ones(size(image)),...
+    color(3) * ones(size(image)));
+imshow(zeros(size(image))); hold on;
 h = imshow(color_image);                                                    % show the color image
 set (h, 'AlphaData',image)                                                  % set the transparecy of the color image to the image of the channel
 % image(:,:,1) = imadjust(imread('ARBc_#4_Li+VPA_37C_4110_C6_IlluminationCorrected_stitched.tif'));
@@ -145,7 +180,7 @@ hold on;
 % setting colormap information for cluster numbers
 % cl_map_clust = [ 0 1 1;
 %                 .6 0 .6;
-%                  1 1 1; 
+%                  1 1 1;
 %                  1 1 0;
 %                ];                                          % create a color map based on different clusters
 % rng(0);                                                                     % set the seed for the random
@@ -154,27 +189,29 @@ hold on;
 cl_map_clust = hsv (max(classes));                                          % create a color map based on different clusters
 for i = 1:max(classes)
     plot( dataset.centers(classes == i,1), ...
-          dataset.centers(classes == i,2), ...
-          '.', ...
-          'color', cl_map_clust(i,:), ...
-          'markersize',25 ...
+        dataset.centers(classes == i,2), ...
+        '.', ...
+        'color', cl_map_clust(i,:), ...
+        'markersize',25 ...
         );
 end
-
-
-
+h0 = plot(dataset.centers(dataset.labels==1, 1), dataset.centers(dataset.labels==1, 2), 'r+', 'markersize', 20);
+h1 = plot(removed_samples(:,1), removed_samples(:,2), 'r.', 'markersize', 25);
+h2 = plot(dataset.centers(classes==1,1), dataset.centers(classes==1,2), 'b.', 'markersize', 15);
+h3 = plot(dataset.centers(classes==2,1), dataset.centers(classes==2,2), 'g.', 'markersize', 15);
+h4 = plot(dataset.centers(classes==3,1), dataset.centers(classes==3,2), 'c.', 'markersize', 15);
 %% T-SNE:
 tsne_labels = cl_map_clust(classes,:) ;
 new_feats = tsne(dataset.features, tsne_labels);
 set(gca,'Color',[0 0 0])
 
-figure, 
+figure,
 for i = 1:max(classes)
     plot( dataset.centers(classes == i,1), ...
-          dataset.centers(classes == i,2), ...
-          '.', ...
-          'color', cl_map_clust(i,:), ...
-          'markersize',25 ...
+        dataset.centers(classes == i,2), ...
+        '.', ...
+        'color', cl_map_clust(i,:), ...
+        'markersize',25 ...
         );
 end
 
