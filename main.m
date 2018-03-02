@@ -3,12 +3,12 @@ setPath();
 
 
 %% load data
-load LiVPA_S100_multi_3.mat               ; new_db{1} = db{1};
-% load LiVPA_APC_multi_3.mat                ; new_db{2} = db{1};
-% load LiVPA_GFAP_multi_3.mat               ; new_db{1} = db{3};
-% load LiVPA_GLAST_multi_3.mat              ; new_db{2} = db{3};
-% load LiVPA_NeuN_multi_3.mat                 ; new_db{1} = db{1};
-biomarkers = cellfun(@(S) S.biomarker, db, 'UniformOutput', false);
+% load LiVPA_S100_multi_3.mat;     new_db{1} = db{1};
+load LiVPA_APC_multi_3.mat;      new_db{1} = db{1};
+% load LiVPA_GFAP_multi_3.mat;     new_db{1} = db{3};
+% load LiVPA_GLAST_multi_3.mat;    new_db{2} = db{3};
+% load LiVPA_NeuN_multi_3.mat;     new_db{1} = db{1}; 
+biomarkers = cellfun(@(S) S.biomarker, new_db, 'UniformOutput', false);
 
 %% create dataset
 type = 'vert';
@@ -99,6 +99,7 @@ for i = 1: num_cls
         dist(j,i) = dist_1 + dist_2;
     end
 end
+figure,
 imagesc(dist)
 set(gca, 'Xtick', 1:num_cls);
 set(gca, 'Ytick', 1:num_cls);
@@ -161,21 +162,7 @@ for i = 1:13
 end
 
 %% visualization
-% read and show the image
-image =  imadjust(imread('ARBc_#4_Li+VPA_37C_4110_C6_IlluminationCorrected_stitched.tif'));
-color =  [1 1 0];
-color_image = cat(3, ...
-    color(1) * ones(size(image)),...
-    color(2) * ones(size(image)),...
-    color(3) * ones(size(image)));
-imshow(zeros(size(image))); hold on;
-h = imshow(color_image);                                                    % show the color image
-set (h, 'AlphaData',image)                                                  % set the transparecy of the color image to the image of the channel
-% image(:,:,1) = imadjust(imread('ARBc_#4_Li+VPA_37C_4110_C6_IlluminationCorrected_stitched.tif'));
-% image(:,:,2) = imadjust(imread('ARBc_#4_Li+VPA_37C_4111_C8_IlluminationCorrected_stitched_registered.tif'));
-% image(:,:,3) = zeros(size(image(:,:,1)));
-% imshow(imread('Composite_S100_GFAP_DAPI_GLAST.jpg'));
-hold on;
+vis_image(dataset.name, biomarkers{1});
 
 % setting colormap information for cluster numbers
 % cl_map_clust = [ 0 1 1;
@@ -195,11 +182,13 @@ for i = 1:max(classes)
         'markersize',25 ...
         );
 end
-h0 = plot(dataset.centers(dataset.labels==1, 1), dataset.centers(dataset.labels==1, 2), 'r+', 'markersize', 20);
+h_all = plot(dataset.centers(:, 1), dataset.centers(:, 2), 'r.', 'markersize', 10);
+h0 = plot(dataset.centers(dataset.labels==1, 1), dataset.centers(dataset.labels==1, 2), 'r+', 'markersize', 15);
 h1 = plot(removed_samples(:,1), removed_samples(:,2), 'r.', 'markersize', 25);
 h2 = plot(dataset.centers(classes==1,1), dataset.centers(classes==1,2), 'b.', 'markersize', 15);
 h3 = plot(dataset.centers(classes==2,1), dataset.centers(classes==2,2), 'g.', 'markersize', 15);
 h4 = plot(dataset.centers(classes==3,1), dataset.centers(classes==3,2), 'c.', 'markersize', 15);
+
 %% T-SNE:
 tsne_labels = cl_map_clust(classes,:) ;
 new_feats = tsne(dataset.features, tsne_labels);
