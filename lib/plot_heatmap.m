@@ -1,9 +1,10 @@
-function [  ] = plot_heatmap(dist,  num_samples )
+function [  ] = plot_heatmap(dist,  num_samples, num_pos )
 %plot_heatmap plots the heatmap of the distance between clusters and the
 %number of samples in each cluster
 %   dist = n*n symmetric matrix containing distances between clusters
 %   num_sample = n*1 column vector having number of samples in each cluster
-
+%   num_pos = n*1 column vector having number of bioM+ samples in each
+%   cluster
 
 % create figure
 f = figure;
@@ -19,8 +20,9 @@ colormap('jet'), colorbar;
 title('differences between clusters')
 
 % plot number of samples in right
-t = uitable(f, 'ColumnName', {'number of samples'},...
-        'Data', num_samples);
+data = [num_samples, num_pos * 100];
+t = uitable(f, 'ColumnName', {'# of samples', '% of bioMarker +'},...
+        'Data', data);
 subplot(122),plot(3)
 pos = get(subplot(122),'position');
 delete(subplot(122))

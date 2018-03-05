@@ -4,10 +4,10 @@ setPath();
 
 %% load data
 % load LiVPA_S100_multi_3.mat;     new_db{1} = db{1};
-load LiVPA_APC_multi_3.mat;      new_db{1} = db{1};
+% load LiVPA_APC_multi_3.mat;      new_db{1} = db{1};
 % load LiVPA_GFAP_multi_3.mat;     new_db{1} = db{3};
 % load LiVPA_GLAST_multi_3.mat;    new_db{2} = db{3};
-% load LiVPA_NeuN_multi_3.mat;     new_db{1} = db{1}; 
+load LiVPA_NeuN_multi_3.mat;     new_db{1} = db{1}; 
 biomarkers = cellfun(@(S) S.biomarker, new_db, 'UniformOutput', false);
 
 %% create dataset
@@ -92,7 +92,9 @@ sigma = W(:,:, UZ);
 
 dist = zeros(num_cls, num_cls);
 for i = 1: num_cls
-    num_samples(i,1) = sum(classes == i);   % calculate the number of samples in each class
+    num_samples(i, 1) = sum(classes == i);                                  % num of samples in each class
+    percent_pos(i, 1) = sum(ismember(find(classes == i), find(dataset.labels))) ...  % percent of bioM+ in cluster
+                / sum(dataset.labels); 
     for j = i+1:num_cls
         dist_1 = KLDiv_multinorm(mu(i,:), mu(j,:), sigma(:,:,i), sigma(:,:,j));
         dist_2 = KLDiv_multinorm(mu(j,:), mu(i,:), sigma(:,:,j), sigma(:,:,i));
@@ -102,7 +104,7 @@ for i = 1: num_cls
 end
 
 % plot heatmap and number of samples
-plot_heatmap(dist, num_samples)
+plot_heatmap(dist, num_samples, percent_pos)
 
 %% visualize distribution of each feature for different clusters:
 % for i = 1:max(classes)
@@ -120,11 +122,11 @@ plot_heatmap(dist, num_samples)
 % suptitle('Histogram of different clusters for each feature');
 
 %% calculate pdf:
-index = linspace(0, 1, 1000);
-for i = 1:num_feat
-    myFit{i} = fitdist(new_feat(:,i), 'kernel', 'by', classes);
-    myPdf{i} = cellfun(@(x) pdf(x,index), myFit{i}, 'uniformoutput', 0);
-end
+% index = linspace(0, 1, 1000);
+% for i = 1:num_feat
+%     myFit{i} = fitdist(new_feat(:,i), 'kernel', 'by', classes);
+%     myPdf{i} = cellfun(@(x) pdf(x,index), myFit{i}, 'uniformoutput', 0);
+% end
 
 %% test calculated pdf (histogram, fitted pdf with hist and fitted pdf with kernel)
 % selected_feat = 2;
@@ -155,13 +157,13 @@ end
 % suptitle(sprintf('PDFs of %d clusters of the each feature',num_cls))
 
 %% calculate joint pdf
-for i = 1:13
-    single_feat_pdf = cellfun(@(x) x{i}, myPdf, 'un', 0);
-    joint_pdf{i} = prod(cat(1, single_feat_pdf{:}), 1);
-end
+% for i = 1:13
+%     single_feat_pdf = cellfun(@(x) x{i}, myPdf, 'un', 0);
+%     joint_pdf{i} = prod(cat(1, single_feat_pdf{:}), 1);
+% end
 
 %% visualization
-vis_image(dataset.name, biomarkers{1});
+h1 = vis_image(dataset.name, 'RECA1');
 
 % setting colormap information for cluster numbers
 % cl_map_clust = [ 0 1 1;
@@ -171,7 +173,6 @@ vis_image(dataset.name, biomarkers{1});
 %                ];                                          % create a color map based on different clusters
 % rng(0);                                                                     % set the seed for the random
 % cl_map_clust = cl_map_clust(randperm(size(cl_map_clust,1)),:);              % shuffle the colors to have random colors
-
 cl_map_clust = hsv (max(classes));                                          % create a color map based on different clusters
 for i = 1:max(classes)
     plot( dataset.centers(classes == i,1), ...
@@ -183,10 +184,17 @@ for i = 1:max(classes)
 end
 h_all = plot(dataset.centers(:, 1), dataset.centers(:, 2), 'r.', 'markersize', 10);
 h0 = plot(dataset.centers(dataset.labels==1, 1), dataset.centers(dataset.labels==1, 2), 'r+', 'markersize', 15);
-h1 = plot(removed_samples(:,1), removed_samples(:,2), 'r.', 'markersize', 25);
-h2 = plot(dataset.centers(classes==1,1), dataset.centers(classes==1,2), 'b.', 'markersize', 15);
-h3 = plot(dataset.centers(classes==2,1), dataset.centers(classes==2,2), 'g.', 'markersize', 15);
-h4 = plot(dataset.centers(classes==3,1), dataset.centers(classes==3,2), 'c.', 'markersize', 15);
+hr = plot(removed_samples(:,1), removed_samples(:,2), 'r.', 'markersize', 25);
+h1 = plot(dataset.centers(classes==1,1), dataset.centers(classes==1,2), 'b.', 'markersize', 15);
+h2 = plot(dataset.centers(classes==2,1), dataset.centers(classes==2,2), 'b.', 'markersize', 15);
+h3 = plot(dataset.centers(classes==3,1), dataset.centers(classes==3,2), 'g.', 'markersize', 15);
+h4 = plot(dataset.centers(classes==4,1), dataset.centers(classes==4,2), 'c.', 'markersize', 15);
+h5 = plot(dataset.centers(classes==5,1), dataset.centers(classes==5,2), 'c.', 'markersize', 15);
+h6 = plot(dataset.centers(classes==6,1), dataset.centers(classes==6,2), 'c.', 'markersize', 15);
+h7 = plot(dataset.centers(classes==7,1), dataset.centers(classes==7,2), 'y.', 'markersize', 15);
+h8 = plot(dataset.centers(classes==8,1), dataset.centers(classes==8,2), 'y.', 'markersize', 15);
+h9 = plot(dataset.centers(classes==9,1), dataset.centers(classes==9,2), 'c.', 'markersize', 15);
+h10 = plot(dataset.centers(classes==10,1), dataset.centers(classes==10,2), 'c.', 'markersize', 15);
 
 %% T-SNE:
 tsne_labels = cl_map_clust(classes,:) ;
