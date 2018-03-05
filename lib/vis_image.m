@@ -1,4 +1,4 @@
-function [ h ] = vis_image(dataset_name,  biomarker_name )
+function [ ax ] = vis_image(dataset_name,  biomarker_name )
 %VIS_IMAGE visualizes the selected biomarker
 %   dataset_name = name of the dataset
 %   biomarker_name = name of the biomarker
@@ -20,6 +20,7 @@ color_image = cat(3, ...
 
 % show the image
 figure, 
+ax = gca;
 imshow(zeros(size(image))); hold on;
 h = imshow(color_image);                                                    % show the color image
 set (h, 'AlphaData',image)                                                  % set the transparecy of the color image to the image of the channel

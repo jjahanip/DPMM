@@ -163,7 +163,7 @@ plot_heatmap(dist, num_samples, percent_pos)
 % end
 
 %% visualization
-h1 = vis_image(dataset.name, 'RECA1');
+ax = vis_image(dataset.name, 'RECA1');
 
 % setting colormap information for cluster numbers
 % cl_map_clust = [ 0 1 1;
