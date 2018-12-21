@@ -44,48 +44,53 @@ new_feat = bsxfun(@rdivide, ...
 % end
 % title_text = sprintf('histogram of %d PCA-reduced features', num_feat);
 % suptitle(title_text)
-%% DPMM:
-N = size(new_feat, 1);
-T = 10;
-Phi = 1/T*ones(N,T);
-alpha = rand*10;
-% Run EM!
-removed_samples = [];
-for i = 1:100
-    [gamma,mu_0,lambda,W,nu] = Mstep(new_feat,Phi,alpha);
-    [Phi,alpha] = Estep(new_feat,gamma,mu_0,lambda,W,nu);
-    t = any(isnan(Phi),2);    % find the samples with NaN
-    Phi = Phi(~t, :);         % remove element from phi
-    new_feat = new_feat(~t, :); % remove element from the samples
-    removed_samples = [removed_samples; dataset.centers(t, :)];
-    dataset.centers = dataset.centers(~t, :);
-    dataset.labels =  dataset.labels(~t, :);
-    % check how many + samples in each cluster
-    [~, Z_hat] = max(Phi,[],2);
-    UZ = sort(unique(Z_hat));
-    Z = zeros(1,N);
-    fprintf('round %d\n', i)
-    for j = 1:length(UZ)
-        Z(Z_hat==UZ(j)) = j;
-        acc = sum(ismember(find(Z == j), find(dataset.labels))) / sum(dataset.labels);
-        len = length(find(Z == j));
-        fprintf('class %d:\t%d cells\t%.2f pos\n', j, len, acc)
-    end
-    fprintf('----------------------------------------\n')
-    
-end
-
-N = size(new_feat, 1);      % update labels with removes samples
-[~, Z_hat] = max(Phi,[],2);
-Z = zeros(1,N);
-UZ = sort(unique(Z_hat));
-for i = 1:length(UZ)
-    Z(Z_hat==UZ(i)) = i;
-end
-classes = Z';
-
-num_cls = max(classes);
-
+%% DPMM-1:
+% 
+% N = size(new_feat, 1);
+% T = 10;
+% Phi = 1/T*ones(N,T);
+% alpha = rand*10;
+% % Run EM!
+% removed_samples = [];
+% for i = 1:100
+%     [gamma,mu_0,lambda,W,nu] = Mstep(new_feat,Phi,alpha);
+%     [Phi,alpha] = Estep(new_feat,gamma,mu_0,lambda,W,nu);
+%     t = any(isnan(Phi),2);    % find the samples with NaN
+%     Phi = Phi(~t, :);         % remove element from phi
+%     new_feat = new_feat(~t, :); % remove element from the samples
+%     removed_samples = [removed_samples; dataset.centers(t, :)];
+%     dataset.centers = dataset.centers(~t, :);
+%     dataset.labels =  dataset.labels(~t, :);
+%     % check how many + samples in each cluster
+%     [~, Z_hat] = max(Phi,[],2);
+%     UZ = sort(unique(Z_hat));
+%     Z = zeros(1,N);
+%     fprintf('round %d\n', i)
+%     for j = 1:length(UZ)
+%         Z(Z_hat==UZ(j)) = j;
+%         acc = sum(ismember(find(Z == j), find(dataset.labels))) / sum(dataset.labels);
+%         len = length(find(Z == j));
+%         fprintf('class %d:\t%d cells\t%.2f pos\n', j, len, acc)
+%     end
+%     fprintf('----------------------------------------\n')
+%     
+% end
+% 
+% N = size(new_feat, 1);      % update labels with removes samples
+% [~, Z_hat] = max(Phi,[],2);
+% Z = zeros(1,N);
+% UZ = sort(unique(Z_hat));
+% for i = 1:length(UZ)
+%     Z(Z_hat==UZ(i)) = i;
+% end
+% classes = Z';
+% 
+% num_cls = max(classes);
+% 
+%% DPMM-2:
+max_cluster = 10;
+iteration = 100;
+classes_2 = safe_dpmm(new_feat, max_cluster, iteration);
 %% calculate KL-Div
 mu = mu_0(UZ, :);
 sigma = W(:,:, UZ);
